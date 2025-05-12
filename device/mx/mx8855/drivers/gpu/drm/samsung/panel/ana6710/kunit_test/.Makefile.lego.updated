@@ -1,0 +1,1 @@
+obj-$(CONFIG_ANA6710_TEST)		+= ana6710_test.o

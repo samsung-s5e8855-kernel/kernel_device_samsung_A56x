@@ -1,0 +1,6 @@
+config REGULATOR_ET5917
+	tristate "ETEK ET5917 voltage regulator"
+	default y
+	help
+	  This driver supports a ETEK ET5917 voltage output regulator
+	  via I2C bus. ET5917 is comprised of various LDOs.

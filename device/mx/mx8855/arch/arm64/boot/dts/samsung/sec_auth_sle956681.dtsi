@@ -1,0 +1,64 @@
+&smd {
+	sec_auth_sle956681: sec-auth-sle956681 {
+			status = "okay";
+			compatible = "samsung,sec_auth_sle956681";
+
+			authon,power_mode = "indirect";
+			//authon,power_mode = "direct";
+
+#if 1
+			authon,1tau_value = <60>;
+			authon,3tau_value = <180>;
+			authon,5tau_value = <300>;
+			authon,response_timeout_value = <1530>;
+			authon,swi_gpio = <
+				SEC_GPIO_REF(AP,gpm10,gpm10,0) 0 /* SWI_GPIO */
+#if 0
+				SEC_GPIO_REF(${swi_gpio_2}) 0 /* SWI_GPIO_2 */
+#endif
+				>;
+#endif
+#if 0
+			authon,1tau_value2 = <60>;
+			authon,3tau_value2 = <180>;
+			authon,5tau_value2 = <300>;
+#endif
+			};
+};
+
+/* /home/dpi/qb5_8814/workspace/P4_1716/kernel/kmodule/battery/suwon/battery_auth/sle956681/a56x/sec_auth_sle956681.dtsi */
+#if 1
+&pinctrl_0 {
+		sec_auth_gpio_pull_down: sec_auth_gpio_pull_down {
+			GPIO_CONFIG_PUD(AP,gpc9,gpc9,0, FUNC_OUTPUT_LOW, PULL_DOWN);
+		};
+	};
+#endif
+
+#if 1
+&pinctrl_1 {
+	sec_auth_gpio_pull_up: sec_auth_gpio_pull_up {
+		GPIO_CONFIG_PUD(AP,gpm10,gpm10,0, FUNC_OUTPUT_HIGH, PULL_UP);
+	};
+};
+#endif
+
+&sec_auth_sle956681 {
+	authon,1tau_value = <60>;
+	authon,3tau_value = <180>;
+	authon,5tau_value = <300>;
+	authon,response_timeout_value = <4500>;
+#if 1
+	/*EUR_DETECTION_NODE*/
+	authon,eur_detection = <SEC_GPIO_REF(AP,gpc9,gpc9,0) 0 >;
+	pinctrl-names = "swi_pullup", "pull_down";
+	pinctrl-0 = <&sec_auth_gpio_pull_up>;
+	pinctrl-1 = <&sec_auth_gpio_pull_down>;
+#else
+	pinctrl-names = "swi_pullup";
+	pinctrl-0 = <&sec_auth_gpio_pull_up>;
+#endif
+};
+
+
+

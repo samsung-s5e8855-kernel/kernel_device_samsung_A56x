@@ -1,0 +1,40 @@
+&smd{
+	sec_lp_thermistor: sec_thermistor@3 {
+		compatible = "samsung,sec-thermistor";
+		status = "okay";
+		thermistor_name = "sec-lp-thermistor";
+		id = <3>;
+
+		io-channels = SEC_ADC(s2mpu15_gpadc,4);
+		io-channel-names = "adc-lp-temp";
+		io-channel-ranges;
+	};
+};
+
+/* /home/dpi/qb5_8814/workspace/P4_1716/kernel/kmodule/sec_pm/sec_thermistor/dts/sec_thermistor_lsi.a56x.dtsi */
+&sec_ap_thermistor {
+	adc_array = <272 319 376 442 520 612 712 844 985 1136
+		1323 1532 1765 1944 2147 2385 2618 2854 3090 3289
+		3452 3596 3713>;
+	temp_array = <900 850 800 750 700 650 600 550 500 450
+		400 350 300 250 200 150 100 50 0 (-50)
+		(-100) (-150) (-200)>;
+};
+
+&sec_lp_thermistor {
+	adc_array = <273 321 378 444 521 612 714 844 984 1140
+		1324 1534 1767 1948 2149 2388 2621 2855 3087 3287
+		3450 3592 3713>;
+	temp_array = <900 850 800 750 700 650 600 550 500 450
+		400 350 300 250 200 150 100 50 0 (-50)
+		(-100) (-150) (-200)>;
+};
+
+&sec_pa_thermistor {
+	adc_array = <369 485 628 789 987 1220 1455 1687 1925 2127
+		2309 2542 2754 2940 3095 3236 3369 3473 3564 3642
+		3709 3765 3812>;
+	temp_array = <(-200) (-150) (-100) (-50) 0 50 100 150 200 250
+		300 350 400 450 500 550 600 650 700 750
+		800 850 900>;
+};

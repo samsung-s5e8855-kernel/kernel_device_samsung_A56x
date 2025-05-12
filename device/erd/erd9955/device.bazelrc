@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+build:erd9955_eng --//exynos/soc-series/common:exynos_build_variant=eng
+build:erd9955_eng --//exynos/soc-series/common:exynos_kernel_build=//exynos/device/erd/erd9955:erd9955
+build:erd9955_eng --//exynos/soc-series/common:exynos_soc_module=//exynos/soc-series/s-android15:s5e9955_soc_module.eng
+build:erd9955_eng --//exynos/soc-series/common:exynos_soc_header=//exynos/soc-series/s-android15:exynos.soc_headers
+build:erd9955_eng --defconfig_fragment=//exynos/soc-series/s-android15:arch/arm64/configs/base_kernel_eng.fragment
+build:erd9955_eng --notrim
+
+build:erd9955_userdebug --//exynos/soc-series/common:exynos_build_variant=userdebug
+build:erd9955_userdebug --//exynos/soc-series/common:exynos_kernel_build=//exynos/device/erd/erd9955:erd9955
+build:erd9955_userdebug --//exynos/soc-series/common:exynos_soc_module=//exynos/soc-series/s-android15:s5e9955_soc_module.userdebug
+build:erd9955_userdebug --//exynos/soc-series/common:exynos_soc_header=//exynos/soc-series/s-android15:exynos.soc_headers
+build:erd9955_userdebug --defconfig_fragment=//exynos/soc-series/s-android15:arch/arm64/configs/base_kernel_userdebug.fragment
+build:erd9955_userdebug --notrim
+
+build:erd9955_user --//exynos/soc-series/common:exynos_build_variant=user
+build:erd9955_user --//exynos/soc-series/common:exynos_kernel_build=//exynos/device/erd/erd9955:erd9955
+build:erd9955_user --//exynos/soc-series/common:exynos_soc_header=//exynos/soc-series/s-android15:exynos.soc_headers
+build:erd9955_user --//exynos/soc-series/common:exynos_soc_module=//exynos/soc-series/s-android15:s5e9955_soc_module.user
+build:erd9955_user --notrim
+
+build:erd9955_abi --//exynos/soc-series/common:exynos_build_variant=user
+build:erd9955_abi --//exynos/soc-series/common:exynos_kernel_build=//exynos/device/erd/erd9955:erd9955
+build:erd9955_abi --//exynos/soc-series/common:exynos_soc_header=//exynos/soc-series/s-android15:exynos.soc_headers
+build:erd9955_abi --//exynos/soc-series/common:exynos_soc_module=//exynos/soc-series/s-android15:s5e9955_soc_module.user
+build:erd9955_abi --//exynos/soc-series/common:exynos_abi_update=yes
+
+build:erd9955_16k_eng --//exynos/soc-series/common:exynos_build_variant=eng
+build:erd9955_16k_eng --page_size=16k
+build:erd9955_16k_eng --//exynos/soc-series/common:exynos_kernel_build=//exynos/device/erd/erd9955:erd9955_16k
+build:erd9955_16k_eng --//exynos/soc-series/common:exynos_soc_module=//exynos/soc-series/s-android15:s5e9955_soc_module.eng
+build:erd9955_16k_eng --//exynos/soc-series/common:exynos_soc_header=//exynos/soc-series/s-android15:exynos.soc_headers
+build:erd9955_16k_eng --defconfig_fragment=//exynos/soc-series/s-android15:arch/arm64/configs/base_kernel_eng.fragment
+build:erd9955_16k_eng --notrim
+
+build:erd9955_16k_userdebug --//exynos/soc-series/common:exynos_build_variant=userdebug
+build:erd9955_16k_userdebug --page_size=16k
+build:erd9955_16k_userdebug --//exynos/soc-series/common:exynos_kernel_build=//exynos/device/erd/erd9955:erd9955_16k
+build:erd9955_16k_userdebug --//exynos/soc-series/common:exynos_soc_module=//exynos/soc-series/s-android15:s5e9955_soc_module.userdebug
+build:erd9955_16k_userdebug --//exynos/soc-series/common:exynos_soc_header=//exynos/soc-series/s-android15:exynos.soc_headers
+build:erd9955_16k_userdebug --defconfig_fragment=//exynos/soc-series/s-android15:arch/arm64/configs/base_kernel_userdebug.fragment
+build:erd9955_16k_userdebug --notrim
+
+build:erd9955_16k_user --//exynos/soc-series/common:exynos_build_variant=user
+build:erd9955_16k_user --page_size=16k
+build:erd9955_16k_user --//exynos/soc-series/common:exynos_kernel_build=//exynos/device/erd/erd9955:erd9955_16k
+build:erd9955_16k_user --//exynos/soc-series/common:exynos_soc_header=//exynos/soc-series/s-android15:exynos.soc_headers
+build:erd9955_16k_user --//exynos/soc-series/common:exynos_soc_module=//exynos/soc-series/s-android15:s5e9955_soc_module.user
+build:erd9955_16k_user --notrim
+
+build:erd9955_emul_eng --//exynos/soc-series/common:exynos_build_variant=eng
+build:erd9955_emul_eng --defconfig_fragment=//exynos/soc-series/s-android15:arch/arm64/configs/s5e9955_emul.fragment
+build:erd9955_emul_eng --//exynos/soc-series/common:exynos_kernel_build=//exynos/device/erd/erd9955:erd9955_emul
+build:erd9955_emul_eng --//exynos/soc-series/common:exynos_soc_module=//exynos/soc-series/s-android15:s5e9955_soc_module.eng
+build:erd9955_emul_eng --//exynos/soc-series/common:exynos_soc_header=//exynos/soc-series/s-android15:exynos.soc_headers
+build:erd9955_emul_eng --notrim

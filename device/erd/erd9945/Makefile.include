@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# This file should be included by external modules that need to link to this
+# project.
+
+KCFLAGS += -I$(KERNEL_SRC)/../exynos/device/erd/erd9945/include
+
+EXTRA_SYMBOLS += $(O)/../exynos/device/erd/erd9945/Module.symvers
+

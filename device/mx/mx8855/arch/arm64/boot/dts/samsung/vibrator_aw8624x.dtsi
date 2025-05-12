@@ -1,0 +1,81 @@
+#define VIB_CONNECTED_AP_slsi
+
+&pinctrl_0 {
+	motor_int_default: motor-int {
+		GPIO_CONFIG_PUD(AP,gpc2,gpc2,0, FUNC_INPUT_WAKEUP, PULL_UP);
+	};
+};
+
+&pinctrl_1 {
+	motor_rst_default: motor-rst {
+		GPIO_CONFIG_PUD_DRV(AP,gpm12,gpm12,0, FUNC_OUTPUT, PULL_NONE, DRV_LV1);
+		samsung,pin-con-pdn = <3>;
+		samsung,pin-pud-pdn = <0>;
+	};
+};
+
+#if 0
+&${vib_boost_en_gpio_parent} {
+	vib_power_default: vib_power_default {
+		GPIO_CONFIG(${vib_boost_en_gpio}, FUNC_OUTPUT_HIGH);
+	};
+
+	vib_power_sleep: vib_power_sleep {
+		GPIO_CONFIG(${vib_boost_en_gpio}, FUNC_OUTPUT_LOW);
+	};
+};
+#endif
+
+&hsi2c_20 {
+	status = "ok";
+	i2c-scl-hz = <400000>;
+	aw8624x: aw8624x_haptic@58 {
+		reg = <0x58>;
+		samsung,max_level_gain = <0x80>;	/* max level gain */
+#if 1
+		samsung,f0-tracking;
+		samsung,f0-tracking-offset = <4>;
+#endif
+		compatible = "awinic,aw8624x_haptic";
+#if 0
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&motor_int_default &motor_rst_default &vib_power_default>;
+		pinctrl-1 = <&vib_power_sleep>;
+#else
+		pinctrl-names = "default";
+		pinctrl-0 = <&motor_int_default &motor_rst_default>;
+#endif
+
+		reset-gpio = <SEC_GPIO_REF(AP,gpm12,gpm12,0) 0>;
+		irq-gpio = <SEC_GPIO_REF(AP,gpc2,gpc2,0) 0>;
+
+		/* LRA parameters */
+		vib_lra_vrms = < 900 >;		/* Motor rated voltage, mV */
+
+		/* cont mode parameters */
+		vib_d2s_gain = < 0x06 >;		/* brake gain based on LRA */
+		vib_f0_d2s_gain = < 0x01 >;		/* f0 brake gain based on LRA */
+		vib_cont_brk_gain = < 0x08 >;		/* brake gain(fine-tuning, mostly keep default) */
+		vib_cont_brk_time = < 0x06 >;		/* half cycle number based on LRA */
+		vib_cont_drv1_lvl = < 0x7F >;		/* overdrive voltage, keep default */
+		vib_cont_drv2_lvl = < 0x23 >;		/* overdrive voltage, keep default */
+		vib_cont_drv1_time = < 0x04 >;		/* half cycle number of overdrive, mostly keep default */
+		vib_cont_drv2_time = < 0x14 >;		/* half cycle number of rms drive based on LRA */
+		vib_cont_track_margin = < 0x0F >;	/* track margin, mostly keep default */
+
+		vib_adjust_f0_min = < 1696 >;		/* adjust the f0 lower limit */
+		vib_adjust_f0_max = < 1744 >;		/* adjust the f0 upper limit */
+		vib_f0_cali_percen = < 15 >;		/* f0 calibration range 15% */
+		/* vib_is_enabled_smart_loop; */
+		vib_is_enabled_inter_brake;
+		vib_is_enabled_auto_brk;
+		status = "okay";
+	};
+};
+
+/* /home/dpi/qb5_8814/workspace/P4_1716/kernel/kmodule/vibrator/VINCE/awinic/aw8624x_v9/vibrator_aw8624x_slsi.a56x.dtsi */
+&aw8624x {
+	/* LRA parameters */
+	vib_f0_pre = < 1700 >;			/* 10 * F0 of LRA */
+};
+

@@ -1,0 +1,7 @@
+
+
+config ANA6710_A56X_TEST
+	bool "KUnit test for tft_common ddi driver"
+	depends on SEC_KUNIT
+	help
+	  TODO: Describe config fully.

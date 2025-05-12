@@ -1,0 +1,591 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
+load("@bazel_skylib//lib:selects.bzl", "selects")
+load("//common:modules.bzl", "get_gki_modules_list")
+load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
+load(
+    "//build/kernel/kleaf:kernel.bzl",
+    "kernel_abi",
+    "kernel_build",
+    "kernel_module",
+    "kernel_module_group",
+    "kernel_modules_install",
+    "kernel_images",
+    "kernel_unstripped_modules_archive",
+    "merged_kernel_uapi_headers",
+)
+load("//build/kernel/kleaf:hermetic_tools.bzl", "hermetic_genrule")
+load("//exynos/soc-series/common/impl:vendor_ramdisk.bzl", "create_vendor_ramdisk")
+load("//exynos/soc-series/common/impl:dtbo_cfg.bzl", "dtbo_cfg")
+load("//exynos/soc-series/common/impl:check_module_list.bzl", "check_module_list")
+load(":modules.bzl",
+    "get_common_kernel_modules_list",
+    "get_all_vendor_boot_modules_list",
+    "get_all_system_dlkm_blocklist",
+    "get_all_vendor_dlkm_blocklist",
+    "register_erd9955_module",
+    "get_all_vendor_dlkm_modules_list",
+    "get_all_kunit_test_list",
+)
+load("//exynos/soc-series/common/impl:create_blocklist.bzl", "create_blocklist")
+
+package(
+    default_visibility = [
+        "//exynos/soc-series:__subpackages__",
+    ],
+)
+
+__soc_dtbs = [
+    "//exynos/device/erd/erd9955:erd9955/s5e9955-erd9955.dtbo",
+    "//exynos/device/erd/erd9955:erd9955/s5e9955-erd9955_rev1.dtbo",
+    "//exynos/device/erd/erd9955:erd9955/s5e9955-erd9955_rev2.dtbo",
+    "//exynos/device/erd/erd9955:erd9955/s5e9955-erd9955_rev3.dtbo",
+    "//exynos/device/erd/erd9955:erd9955/s5e9955-erd9955_16k.dtbo",
+    "//exynos/device/erd/erd9955:erd9955/s5e9955-erd9955_16k_rev1.dtbo",
+    "//exynos/device/erd/erd9955:erd9955/s5e9955-erd9955_16k_rev2.dtbo",
+    "//exynos/device/erd/erd9955:erd9955/s5e9955-erd9955_16k_rev3.dtbo",
+    "//exynos/device/erd/erd9955:erd9955/exynos-base-dts/s5e9955.dtb",
+]
+
+__soc_dtbs_emul = [
+    "//exynos/device/erd/erd9955:erd9955_emul/s5e9955-erd9955_emul.dtbo",
+    "//exynos/device/erd/erd9955:erd9955_emul/exynos-base-dts/s5e9955_emul.dtb",
+]
+
+__make_goals = [
+    "modules",
+    "dtbs",
+]
+
+write_file(
+    name = "vendor_kunit_modules_list",
+    out = "vendor_kunit_modules.erd9955",
+    content = select({
+        "//exynos/soc-series/common:eng_build": get_all_kunit_test_list("eng"),
+        "//exynos/soc-series/common:userdebug_build": get_all_kunit_test_list("userdebug"),
+        "//exynos/soc-series/common:user_build": get_all_kunit_test_list("user"),
+    })
+)
+
+write_file(
+    name = "vendor_dlkm_modules_list",
+    out = "vendor_dlkm_modules.erd9955",
+    content = select({
+        "//exynos/soc-series/common:eng_build": get_all_vendor_dlkm_modules_list("eng"),
+        "//exynos/soc-series/common:userdebug_build": get_all_vendor_dlkm_modules_list("userdebug"),
+        "//exynos/soc-series/common:user_build": get_all_vendor_dlkm_modules_list("user"),
+    })
+)
+
+write_file(
+    name = "erd9955_vendor_dlkm_blocklist",
+    out = "vendor_dlkm.modules.blocklist.erd9955",
+    content = get_all_vendor_dlkm_blocklist()
+)
+
+write_file(
+    name = "erd9955_system_dlkm_blocklist",
+    out = "system_dlkm.modules.blocklist.erd9955",
+    content = get_all_system_dlkm_blocklist()
+)
+
+create_blocklist(
+    name = "erd9955_vendor_dlkm_modules_blocklist",
+    modules_blocklist = ":erd9955_vendor_dlkm_blocklist"
+)
+
+create_blocklist(
+    name = "erd9955_system_dlkm_modules_blocklist",
+    modules_blocklist = ":erd9955_system_dlkm_blocklist"
+)
+
+kernel_build(
+    name = "erd9955",
+    base_kernel = "//common:kernel_aarch64",
+    srcs = glob([
+            "build.config.*",
+            "arch/arm64/boot/dts/**",
+            "arch/arm64/configs/**",
+            "Kconfig.ext",
+            "Kconfig.ext_modules",
+        ],
+        exclude =[
+            ".*",
+            ".*/**",
+            "BUILD.bazel",
+            "**/*.bzl",
+            "build.config.*",
+        ],
+    ) + [
+        # keep sorted
+        "//common:common_kernel_sources",
+        "//exynos/soc-series/s-android15:exynos.soc_kconfig",
+        "//exynos/soc-series/s-android15:exynos.soc_fragment",
+        "//exynos/soc-series/s-android15:build.config.s5e9955_v",
+        "//exynos/soc-series/s-android15:exynos.dt-bindings",
+        "//exynos/device/erd/erd9955:exynos.erd9955_kconfig",
+        "//exynos/device/erd/common/drivers/input/touchscreen/sec_ts:sec_ts.kconfig",
+        "//exynos/external-modules/sgpu:sgpu.kconfig",
+        "//exynos/external-modules/camera:camera.kconfig",
+        "//exynos/external-modules/sec_input/sec_input:sec_input.kconfig",
+        "//exynos/external-modules/sec_input/touchscreen/synaptics:synaptics_ts.kconfig",
+    ],
+    kmi_symbol_list = select({
+        "//exynos/soc-series/common:abi_update": "//common:android/abi_gki_aarch64_exynos",
+        "//conditions:default": None,
+    }),
+    trim_nonlisted_kmi = False,
+    kmi_symbol_list_strict_mode = False,
+    outs = [
+        ".config",
+        "vmlinux",
+        "Module.symvers",
+        "modules.order",
+        "exynos-base-dts/s5e9955.dtb",
+        "s5e9955-erd9955.dtbo",
+        "s5e9955-erd9955_rev1.dtbo",
+        "s5e9955-erd9955_rev2.dtbo",
+        "s5e9955-erd9955_rev3.dtbo",
+        "s5e9955-erd9955_16k.dtbo",
+        "s5e9955-erd9955_16k_rev1.dtbo",
+        "s5e9955-erd9955_16k_rev2.dtbo",
+        "s5e9955-erd9955_16k_rev3.dtbo",
+    ],
+    kconfig_ext = ":Kconfig.ext",
+    build_config = ":build.config.erd9955_v",
+    dtstree = "//exynos/device/erd/erd9955/arch/arm64/boot/dts:erd9955_dt",
+    # in-tree kernel modules
+    module_outs = get_common_kernel_modules_list(),
+    collect_unstripped_modules = True,
+    strip_modules = True,
+    make_goals = __make_goals,
+    defconfig_fragments = select({
+        "//exynos/soc-series/common:eng_build": [ ":arch/arm64/configs/eng.fragment"],
+        "//exynos/soc-series/common:userdebug_build": [ ":arch/arm64/configs/userdebug.fragment"],
+        "//exynos/soc-series/common:user_build": [ ":arch/arm64/configs/user.fragment"],
+    }),
+)
+
+kernel_abi(
+    name = "erd9955_abi",
+    kernel_build = ":erd9955",
+    kernel_modules = [
+        ":erd9955_ext_modules",
+    ],
+    kmi_enforced = True,
+    kmi_symbol_list_add_only = True,
+    module_grouping = True,
+)
+
+filegroup(
+    name = "exynos.erd9955_sources",
+    srcs = glob(
+        ["**"],
+        exclude = [
+            ".*",
+            ".*/**",
+            "BUILD.bazel",
+            "**/*.bzl",
+            "build.config.*",
+        ],
+    ),
+    visibility = [
+        "//exynos/device:__subpackages__",
+    ],
+)
+
+filegroup(
+    name = "exynos.erd9955_kconfig",
+    srcs = glob([
+        "**/Kconfig",
+    ]) + [
+        "Kconfig.ext",
+        "Kconfig.ext_modules",
+    ],
+    visibility = [
+        "//exynos/device:__subpackages__",
+    ],
+)
+
+#alias(
+#    name = "erd9955_module",
+#    actual = select({
+#        "//exynos/soc-series/common:eng_build": ":erd9955_module.eng",
+#        "//exynos/soc-series/common:userdebug_build": ":erd9955_module.userdebug",
+#        "//exynos/soc-series/common:user_build": ":erd9955_module.user",
+#    }),
+#)
+
+alias(
+    name = "sgpu_modules",
+    actual = select({
+        "//exynos/soc-series/common:eng_build":
+                "//exynos/external-modules/sgpu:sgpu_with_test",
+        "//exynos/soc-series/common:userdebug_build":
+                "//exynos/external-modules/sgpu:sgpu_with_test",
+        "//conditions:default": "//exynos/external-modules/sgpu:sgpu",
+    }),
+)
+
+alias(
+    name = "camera_modules",
+    actual = select({
+        "//exynos/soc-series/common:user_build":
+            "//exynos/external-modules/camera:s5e9955_camera_user",
+        "//conditions:default":"//exynos/external-modules/camera:s5e9955_camera",
+    }),
+)
+
+kernel_module_group(
+    name = "erd9955_ext_modules",
+    srcs = [
+        "//exynos/soc-series/common:exynos_soc_module",
+        "//exynos/device/erd/common/drivers/input/touchscreen/sec_ts:sec_ts",
+        ":sgpu_modules",
+        ":camera_modules",
+#        ":erd9955_module",
+        "//exynos/external-modules/sec_input/sec_input:sec_input",
+        "//exynos/external-modules/sec_input/touchscreen/synaptics:synaptics_ts_spi",
+    ],
+)
+
+kernel_modules_install(
+    name = "erd9955_modules_install",
+    kernel_build = "//exynos/soc-series/common:exynos_kernel_build",
+    kernel_modules = [":erd9955_ext_modules"],
+    outs = ["modules.dep", "modules.alias"],
+)
+
+
+check_module_list(
+    name = "erd9955_check_module_list",
+    kernel_modules_install = ":erd9955_modules_install",
+    vendor_boot_kernel_modules = ":vendor_boot_modules_list",
+    system_dlkm_kernel_modules = ":system_dlkm_modules_list",
+    vendor_dlkm_kernel_modules = ":vendor_dlkm_modules_list",
+)
+
+merged_kernel_uapi_headers(
+    name = "erd9955_merged_uapi_headers",
+    kernel_build = "//exynos/soc-series/common:exynos_kernel_build",
+    kernel_modules = [":erd9955_ext_modules"],
+)
+
+kernel_unstripped_modules_archive(
+    name = "erd9955_module_symbols",
+    kernel_build = "//exynos/soc-series/common:exynos_kernel_build",
+    kernel_modules = [":erd9955_ext_modules"],
+)
+
+write_file(
+    name = "vendor_boot_modules_list",
+    out = "vendor_boot.modules.erd9955",
+    content = select({
+        "//exynos/soc-series/common:eng_build": get_all_vendor_boot_modules_list("eng"),
+        "//exynos/soc-series/common:userdebug_build": get_all_vendor_boot_modules_list("userdebug"),
+        "//exynos/soc-series/common:user_build": get_all_vendor_boot_modules_list("user"),
+    })
+)
+
+write_file(
+    name = "system_dlkm_modules_list",
+    out = "system_dlkm_modules_list.erd9955",
+    content = get_gki_modules_list("arm64"),
+)
+
+create_vendor_ramdisk(
+    name = "erd9955_custom_vendor_ramdisk",
+    vendor_files = [
+        "//prebuilts/platform/erd9955:conf/fstab.s5e9955.ufs.ab",
+        "//prebuilts/platform/erd9955:conf/init.recovery.s5e9955.rc",
+        "//prebuilts/platform/erd9955:conf/init.s5e9955.usb.rc",
+        "//prebuilts/platform/erd9955:firmware/sgpu/mgfx3.0_prem.bin",
+        "//prebuilts/platform/erd9955:firmware/sgpu/mgfx3.1_prem.bin",
+    ],
+    system_prebuilt_files = [
+        "//prebuilts/boot-artifacts/arm64/exynos:system_prebuilt_files.tar.gz",
+    ],
+    vendor_ramdisk_list = [":vendor_ramdisk.cfg",],
+)
+
+kernel_images(
+    name = "erd9955_images",
+    build_initramfs = True,
+    build_boot = True,
+    build_vendor_boot = True,
+    kernel_build = "//exynos/soc-series/common:exynos_kernel_build",
+    kernel_modules_install = "erd9955_modules_install",
+    base_kernel_images = "//common:kernel_aarch64_images",
+    vendor_ramdisk_binaries = [
+        ":erd9955_custom_vendor_ramdisk",
+    ],
+    modules_list = ":vendor_boot_modules_list",
+    build_system_dlkm = True,
+    system_dlkm_modules_list = ":system_dlkm_modules_list",
+    system_dlkm_fs_type = "erofs",
+    system_dlkm_modules_blocklist = ":erd9955_system_dlkm_modules_blocklist",
+    dedup_dlkm_modules = True,
+    build_vendor_dlkm = True,
+    vendor_dlkm_archive = True,
+    vendor_dlkm_fs_type = "erofs",
+    vendor_dlkm_modules_list = ":vendor_dlkm_modules_list",
+    vendor_dlkm_modules_blocklist = ":erd9955_vendor_dlkm_modules_blocklist",
+    vendor_dlkm_props = ":vendor_dlkm_props",
+    deps = [
+        "//exynos/soc-series/common/impl:file_contexts",
+    ],
+)
+
+dtbo_cfg(
+    name = "erd9955_dtbo_cfg",
+    srcs = __soc_dtbs,
+    config_file = ":dtboimg.cfg",
+)
+
+copy_to_dist_dir(
+    name = "erd9955_dist",
+    data = [
+        ":erd9955",
+        ":erd9955_dtbo_cfg",
+        ":erd9955_images",
+        ":erd9955_modules_install",
+        ":erd9955_module_symbols",
+        ":erd9955_merged_uapi_headers",
+        ":erd9955_check_module_list",
+        ":vendor_kunit_modules_list",
+    ],
+    dist_dir = "out/erd9955/dist",
+    flat = True,
+    log = "info",
+)
+
+kernel_build(
+    name = "erd9955_16k",
+    base_kernel = "//common:kernel_aarch64_16k",
+    srcs = glob([
+            "build.config.*",
+            "arch/arm64/boot/dts/**",
+            "arch/arm64/configs/**",
+            "Kconfig.ext",
+            "Kconfig.ext_modules",
+        ],
+        exclude =[
+            ".*",
+            ".*/**",
+            "BUILD.bazel",
+            "**/*.bzl",
+            "build.config.*",
+        ],
+    ) + [
+        # keep sorted
+        "//common:common_kernel_sources",
+        "//exynos/soc-series/s-android15:exynos.soc_kconfig",
+        "//exynos/soc-series/s-android15:exynos.soc_fragment",
+        "//exynos/soc-series/s-android15:build.config.s5e9955_v",
+        "//exynos/soc-series/s-android15:exynos.dt-bindings",
+        "//exynos/device/erd/erd9955:exynos.erd9955_kconfig",
+        "//exynos/device/erd/common/drivers/input/touchscreen/sec_ts:sec_ts.kconfig",
+        "//exynos/external-modules/sgpu:sgpu.kconfig",
+        "//exynos/external-modules/camera:camera.kconfig",
+        "//exynos/external-modules/sec_input/sec_input:sec_input.kconfig",
+        "//exynos/external-modules/sec_input/touchscreen/synaptics:synaptics_ts.kconfig",
+    ],
+    kmi_symbol_list = select({
+        "//exynos/soc-series/common:abi_update": "//common:android/abi_gki_aarch64_exynos",
+        "//conditions:default": None,
+    }),
+    trim_nonlisted_kmi = False,
+    kmi_symbol_list_strict_mode = False,
+    outs = [
+        ".config",
+        "vmlinux",
+        "Module.symvers",
+        "modules.order",
+        "exynos-base-dts/s5e9955.dtb",
+        "s5e9955-erd9955_16k.dtbo",
+        "s5e9955-erd9955_16k_rev1.dtbo",
+        "s5e9955-erd9955_16k_rev2.dtbo",
+        "s5e9955-erd9955_16k_rev3.dtbo",
+    ],
+    kconfig_ext = ":Kconfig.ext",
+    build_config = ":build.config.erd9955_16k_v",
+    dtstree = "//exynos/device/erd/erd9955/arch/arm64/boot/dts:erd9955_dt",
+    # in-tree kernel modules
+    module_outs = get_common_kernel_modules_list(),
+    collect_unstripped_modules = True,
+    strip_modules = True,
+    make_goals = __make_goals,
+    defconfig_fragments = select({
+        "//exynos/soc-series/common:eng_build": [ ":arch/arm64/configs/eng.fragment"],
+        "//exynos/soc-series/common:userdebug_build": [ ":arch/arm64/configs/userdebug.fragment"],
+        "//exynos/soc-series/common:user_build": [ ":arch/arm64/configs/user.fragment"],
+    }),
+)
+
+dtbo_cfg(
+    name = "erd9955_16k_dtbo_cfg",
+    srcs = [
+        "//exynos/device/erd/erd9955:erd9955_16k/s5e9955-erd9955_16k.dtbo",
+        "//exynos/device/erd/erd9955:erd9955_16k/s5e9955-erd9955_16k_rev1.dtbo",
+        "//exynos/device/erd/erd9955:erd9955_16k/s5e9955-erd9955_16k_rev2.dtbo",
+        "//exynos/device/erd/erd9955:erd9955_16k/s5e9955-erd9955_16k_rev3.dtbo",
+        "//exynos/device/erd/erd9955:erd9955_16k/exynos-base-dts/s5e9955.dtb",
+    ],
+    config_file = ":16k_dtboimg.cfg",
+)
+
+kernel_images(
+    name = "erd9955_16k_images",
+    build_initramfs = True,
+    build_boot = True,
+    build_vendor_boot = True,
+    kernel_build = "//exynos/soc-series/common:exynos_kernel_build",
+    kernel_modules_install = "erd9955_modules_install",
+    base_kernel_images = "//common:kernel_aarch64_16k_images",
+    vendor_ramdisk_binaries = [
+        ":erd9955_custom_vendor_ramdisk",
+    ],
+    modules_list = ":vendor_boot_modules_list",
+    build_system_dlkm = True,
+    system_dlkm_modules_list = ":system_dlkm_modules_list",
+    system_dlkm_modules_blocklist = ":erd9955_system_dlkm_modules_blocklist",
+    dedup_dlkm_modules = True,
+    build_vendor_dlkm = True,
+    vendor_dlkm_archive = True,
+    vendor_dlkm_modules_list = ":vendor_dlkm_modules_list",
+    vendor_dlkm_modules_blocklist = ":erd9955_vendor_dlkm_modules_blocklist",
+)
+
+copy_to_dist_dir(
+    name = "erd9955_16k_dist",
+    data = [
+        ":erd9955_16k",
+        ":erd9955_16k_dtbo_cfg",
+        ":erd9955_16k_images",
+        ":erd9955_modules_install",
+        ":erd9955_module_symbols",
+        ":erd9955_merged_uapi_headers",
+    ],
+    dist_dir = "out/erd9955/16k/dist",
+    flat = True,
+    log = "info",
+)
+
+kernel_build(
+    name = "erd9955_emul",
+    base_kernel = "//common:kernel_aarch64",
+    srcs = glob([
+            "build.config.*",
+            "arch/arm64/boot/dts/**",
+            "arch/arm64/configs/**",
+            "Kconfig.ext",
+            "Kconfig.ext_modules",
+        ],
+        exclude =[
+            ".*",
+            ".*/**",
+            "BUILD.bazel",
+            "**/*.bzl",
+            "build.config.*",
+        ],
+    ) + [
+        # keep sorted
+        "//common:common_kernel_sources",
+        "//exynos/soc-series/s-android15:exynos.soc_kconfig",
+        "//exynos/soc-series/s-android15:exynos.soc_fragment",
+        "//exynos/soc-series/s-android15:build.config.s5e9955_v",
+        "//exynos/soc-series/s-android15:exynos.dt-bindings",
+        "//exynos/device/erd/common/drivers/input/touchscreen/sec_ts:sec_ts.kconfig",
+        "//exynos/external-modules/sgpu:sgpu.kconfig",
+        "//exynos/external-modules/sec_input/sec_input:sec_input.kconfig",
+        "//exynos/external-modules/sec_input/touchscreen/synaptics:synaptics_ts.kconfig",
+    ],
+    outs = [
+        ".config",
+        "vmlinux",
+        "Module.symvers",
+        "modules.order",
+        "exynos-base-dts/s5e9955_emul.dtb",
+        "s5e9955-erd9955_emul.dtbo",
+    ],
+    kconfig_ext = ":Kconfig.ext",
+    build_config = ":build.config.erd9955_emul_v",
+    dtstree = "//exynos/device/erd/erd9955/arch/arm64/boot/dts:erd9955_dt",
+    # in-tree kernel modules
+    module_outs = get_common_kernel_modules_list(),
+    module_implicit_outs = get_gki_modules_list("arm64"),
+    collect_unstripped_modules = True,
+    strip_modules = True,
+    make_goals = __make_goals,
+)
+
+kernel_modules_install(
+    name = "erd9955_emul_modules_install",
+    kernel_build = ":erd9955_emul",
+    kernel_modules = [":erd9955_ext_modules"],
+)
+
+kernel_unstripped_modules_archive(
+    name = "erd9955_emul_module_symbols",
+    kernel_build = ":erd9955_emul",
+    kernel_modules = [":erd9955_ext_modules"],
+)
+
+create_vendor_ramdisk(
+    name = "erd9955_emul_custom_vendor_ramdisk",
+    vendor_files = [
+        "//prebuilts/platform/erd9955:conf/fstab.s5e9955.virtio",
+        "//prebuilts/platform/erd9955:conf/init.recovery.s5e9955.rc",
+        "//prebuilts/platform/erd9955:conf/init.s5e9955.usb.rc",
+        "//prebuilts/platform/erd9955:firmware/sgpu/vangogh_lite_unified_m3_evt0.bin",
+        "//prebuilts/platform/erd9955:firmware/sgpu/vangogh_lite_unified_m3_evt1.bin",
+    ],
+    system_prebuilt_files = [
+        "//prebuilts/boot-artifacts/arm64/exynos:system_prebuilt_files.tar.gz",
+    ],
+    vendor_ramdisk_list = [":vendor_ramdisk.cfg",],
+)
+
+kernel_images(
+    name = "erd9955_emul_images",
+    build_initramfs = True,
+    build_boot = True,
+    build_vendor_boot = True,
+    kernel_build = ":erd9955_emul",
+    kernel_modules_install = "erd9955_emul_modules_install",
+    base_kernel_images = "//common:kernel_aarch64_images",
+    vendor_ramdisk_binaries = [
+         ":erd9955_emul_custom_vendor_ramdisk",
+#        "//prebuilts/boot-artifacts/arm64/exynos:eng/ramdisk_for_console.cpio.lz4",
+    ],
+    modules_list = ":vendor_boot_modules_list",
+    build_system_dlkm = True,
+    system_dlkm_modules_list = ":system_dlkm_modules_list",
+    dedup_dlkm_modules = True,
+    build_vendor_dlkm = True,
+    vendor_dlkm_archive = True,
+    vendor_dlkm_modules_list = ":vendor_dlkm_modules_list",
+)
+
+dtbo_cfg(
+    name = "erd9955_emul_dtbo_cfg",
+    srcs = __soc_dtbs_emul,
+    config_file = ":emul_dtboimg.cfg",
+)
+
+copy_to_dist_dir(
+    name = "erd9955_emul_dist",
+    data = [
+        ":erd9955_emul",
+        ":erd9955_emul_dtbo_cfg",
+        ":erd9955_emul_images",
+        ":erd9955_emul_modules_install",
+        ":erd9955_emul_module_symbols",
+    ],
+    dist_dir = "out/erd9955_emul/dist",
+    flat = True,
+    log = "info",
+)
+
+register_erd9955_module()

@@ -1,0 +1,2 @@
+source "$(KCONFIG_EXT_PREFIX)../common/drivers/input/touchscreen/sec_ts/Kconfig"
+source "$(KCONFIG_EXT_MODULES_PREFIX)sgpu/Kconfig"

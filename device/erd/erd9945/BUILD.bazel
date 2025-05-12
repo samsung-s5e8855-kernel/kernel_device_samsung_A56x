@@ -1,0 +1,363 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
+load("@bazel_skylib//lib:selects.bzl", "selects")
+load("//common:modules.bzl", "get_gki_modules_list")
+load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
+load(
+    "//build/kernel/kleaf:kernel.bzl",
+    "kernel_build",
+    "kernel_module",
+    "kernel_module_group",
+    "kernel_modules_install",
+    "kernel_images",
+    "kernel_unstripped_modules_archive",
+    "merged_kernel_uapi_headers",
+)
+load("//build/kernel/kleaf:hermetic_tools.bzl", "hermetic_genrule")
+load("//exynos/soc-series/common/impl:vendor_ramdisk.bzl", "create_vendor_ramdisk")
+load("//exynos/soc-series/common/impl:dtbo_cfg.bzl", "dtbo_cfg")
+load(":modules.bzl",
+    "get_common_kernel_modules_list",
+    "get_all_vendor_boot_modules_list",
+    "get_erd9945_vendor_modules_list",
+    "get_all_system_dlkm_blocklist",
+    "get_all_vendor_dlkm_blocklist",
+    "register_erd9945_module",
+)
+load("//exynos/soc-series/common/impl:create_blocklist.bzl", "create_blocklist")
+
+package(
+    default_visibility = [
+        "//exynos/soc-series:__subpackages__",
+    ],
+)
+
+__soc_dtbs = [
+    "//exynos/device/erd/erd9945:erd9945/s5e9945-erd9945.dtbo",
+    "//exynos/device/erd/erd9945:erd9945/s5e9945-erd9945_16k.dtbo",
+    "//exynos/device/erd/erd9945:erd9945/exynos-base-dts/s5e9945.dtb",
+]
+
+__make_goals = [
+    "modules",
+    "dtbs",
+]
+
+write_file(
+    name = "erd9945_vendor_dlkm_blocklist",
+    out = "vendor_dlkm.modules.blocklist.erd9945",
+    content = get_all_vendor_dlkm_blocklist()
+)
+
+write_file(
+    name = "erd9945_system_dlkm_blocklist",
+    out = "system_dlkm.modules.blocklist.erd9945",
+    content = get_all_system_dlkm_blocklist()
+)
+
+create_blocklist(
+    name = "erd9945_vendor_dlkm_modules_blocklist",
+    modules_blocklist = ":erd9945_vendor_dlkm_blocklist"
+)
+
+create_blocklist(
+    name = "erd9945_system_dlkm_modules_blocklist",
+    modules_blocklist = ":erd9945_system_dlkm_blocklist"
+)
+
+
+kernel_build(
+    name = "erd9945",
+    base_kernel = "//common:kernel_aarch64",
+    srcs = glob([
+            "build.config.*",
+            "arch/arm64/boot/dts/**",
+            "arch/arm64/configs/**",
+            "Kconfig.ext",
+            "Kconfig.ext_modules",
+        ],
+        exclude =[
+            ".*",
+            ".*/**",
+            "BUILD.bazel",
+            "**/*.bzl",
+            "build.config.*",
+        ],
+    ) + [
+        # keep sorted
+        "//common:common_kernel_sources",
+        "//exynos/soc-series/s-android15:exynos.soc_kconfig",
+        "//exynos/soc-series/s-android15:exynos.soc_fragment",
+        "//exynos/soc-series/s-android15:build.config.s5e9945_v",
+        "//exynos/soc-series/s-android15:exynos.dt-bindings",
+        "//exynos/device/erd/erd9945:exynos.erd9945_kconfig",
+        "//exynos/device/erd/common/drivers/input/touchscreen/sec_ts:sec_ts.kconfig",
+        "//exynos/external-modules/sgpu:sgpu.kconfig",
+    ],
+    outs = [
+        ".config",
+        "vmlinux",
+        "Module.symvers",
+        "modules.order",
+        "exynos-base-dts/s5e9945.dtb",
+        "s5e9945-erd9945.dtbo",
+        "s5e9945-erd9945_16k.dtbo",
+    ],
+    kconfig_ext = ":Kconfig.ext",
+    build_config = ":build.config.erd9945_v",
+    dtstree = "//exynos/device/erd/erd9945/arch/arm64/boot/dts:erd9945_dt",
+    # in-tree kernel modules
+    module_outs = get_common_kernel_modules_list(),
+    trim_nonlisted_kmi = False,
+    collect_unstripped_modules = True,
+    strip_modules = True,
+    make_goals = __make_goals,
+    defconfig_fragments = select({
+        "//exynos/soc-series/common:eng_build": [ ":arch/arm64/configs/eng.fragment"],
+        "//exynos/soc-series/common:userdebug_build": [ ":arch/arm64/configs/userdebug.fragment"],
+        "//exynos/soc-series/common:user_build": [ ":arch/arm64/configs/user.fragment"],
+    }),
+)
+
+filegroup(
+    name = "exynos.erd9945_sources",
+    srcs = glob(
+        ["**"],
+        exclude = [
+            ".*",
+            ".*/**",
+            "BUILD.bazel",
+            "**/*.bzl",
+            "build.config.*",
+        ],
+    ),
+    visibility = [
+        "//exynos/device:__subpackages__",
+    ],
+)
+
+filegroup(
+    name = "exynos.erd9945_kconfig",
+    srcs = glob([
+        "**/Kconfig",
+    ]) + [
+        "Kconfig.ext",
+        "Kconfig.ext_modules",
+    ],
+    visibility = [
+        "//exynos/device:__subpackages__",
+    ],
+)
+
+#alias(
+#    name = "erd9945_module",
+#    actual = select({
+#        "//exynos/soc-series/common:eng_build": ":erd9945_module.eng",
+#        "//exynos/soc-series/common:userdebug_build": ":erd9945_module.userdebug",
+#        "//exynos/soc-series/common:user_build": ":erd9945_module.user",
+#    }),
+#)
+
+kernel_module_group(
+    name = "erd9945_ext_modules",
+    srcs = [
+        "//exynos/soc-series/common:exynos_soc_module",
+#        ":erd9945_module",
+        "//exynos/device/erd/common/drivers/input/touchscreen/sec_ts:sec_ts",
+        "//exynos/external-modules/sgpu:sgpu",
+    ],
+)
+
+kernel_modules_install(
+    name = "erd9945_modules_install",
+    kernel_build = "//exynos/soc-series/common:exynos_kernel_build",
+    kernel_modules = [":erd9945_ext_modules"],
+)
+
+merged_kernel_uapi_headers(
+    name = "erd9945_merged_uapi_headers",
+    kernel_build = "//exynos/soc-series/common:exynos_kernel_build",
+    kernel_modules = [":erd9945_ext_modules"],
+)
+
+kernel_unstripped_modules_archive(
+    name = "erd9945_module_symbols",
+    kernel_build = "//exynos/soc-series/common:exynos_kernel_build",
+    kernel_modules = [":erd9945_ext_modules"],
+)
+
+write_file(
+    name = "vendor_boot_modules_list",
+    out = "vendor_boot.modules.erd9945",
+    content = select({
+        "//exynos/soc-series/common:eng_build": get_all_vendor_boot_modules_list("eng"),
+        "//exynos/soc-series/common:userdebug_build": get_all_vendor_boot_modules_list("userdebug"),
+        "//exynos/soc-series/common:user_build": get_all_vendor_boot_modules_list("user"),
+    })
+)
+
+write_file(
+    name = "system_dlkm_modules_list",
+    out = "system_dlkm_modules_list.erd9945",
+    content = get_gki_modules_list("arm64"),
+)
+
+create_vendor_ramdisk(
+    name = "erd9945_custom_vendor_ramdisk",
+    vendor_files = [
+        "//prebuilts/platform/erd9945:conf/fstab.s5e9945.ufs.ab",
+        "//prebuilts/platform/erd9945:conf/init.recovery.s5e9945.rc",
+        "//prebuilts/platform/erd9945:conf/init.s5e9945.usb.rc",
+        "//prebuilts/platform/erd9945:firmware/sgpu/mgfx2.1_prem.bin",
+    ],
+    system_prebuilt_files = [
+        "//prebuilts/boot-artifacts/arm64/exynos:system_prebuilt_files.tar.gz",
+    ],
+    vendor_ramdisk_list = [":vendor_ramdisk.cfg",],
+)
+
+kernel_images(
+    name = "erd9945_images",
+    build_initramfs = True,
+    build_boot = True,
+    build_vendor_boot = True,
+    kernel_build = "//exynos/soc-series/common:exynos_kernel_build",
+    kernel_modules_install = "erd9945_modules_install",
+    base_kernel_images = "//common:kernel_aarch64_images",
+    vendor_ramdisk_binaries = [
+        ":erd9945_custom_vendor_ramdisk",
+    ],
+    modules_list = ":vendor_boot_modules_list",
+    build_system_dlkm = True,
+    system_dlkm_modules_list = ":system_dlkm_modules_list",
+    system_dlkm_modules_blocklist = ":erd9945_system_dlkm_modules_blocklist",
+    dedup_dlkm_modules = True,
+    build_vendor_dlkm = True,
+    vendor_dlkm_archive = True,
+    vendor_dlkm_modules_list = ":vendor_dlkm_modules.erd9945",
+    vendor_dlkm_modules_blocklist = ":erd9945_vendor_dlkm_modules_blocklist",
+)
+
+dtbo_cfg(
+    name = "erd9945_dtbo_cfg",
+    srcs = __soc_dtbs,
+    config_file = ":dtboimg.cfg",
+)
+
+copy_to_dist_dir(
+    name = "erd9945_dist",
+    data = [
+        ":erd9945",
+        ":erd9945_dtbo_cfg",
+        ":erd9945_images",
+        ":erd9945_modules_install",
+        ":erd9945_module_symbols",
+        ":erd9945_merged_uapi_headers",
+    ],
+    dist_dir = "out/erd9945/dist",
+    flat = True,
+    log = "info",
+)
+
+kernel_build(
+    name = "erd9945_16k",
+    base_kernel = "//common:kernel_aarch64_16k",
+    srcs = glob([
+            "build.config.*",
+            "arch/arm64/boot/dts/**",
+            "arch/arm64/configs/**",
+            "Kconfig.ext",
+            "Kconfig.ext_modules",
+        ],
+        exclude =[
+            ".*",
+            ".*/**",
+            "BUILD.bazel",
+            "**/*.bzl",
+            "build.config.*",
+        ],
+    ) + [
+        # keep sorted
+        "//common:common_kernel_sources",
+        "//exynos/soc-series/s-android15:exynos.soc_kconfig",
+        "//exynos/soc-series/s-android15:exynos.soc_fragment",
+        "//exynos/soc-series/s-android15:build.config.s5e9945_v",
+        "//exynos/soc-series/s-android15:exynos.dt-bindings",
+        "//exynos/device/erd/erd9945:exynos.erd9945_kconfig",
+        "//exynos/device/erd/common/drivers/input/touchscreen/sec_ts:sec_ts.kconfig",
+        "//exynos/external-modules/sgpu:sgpu.kconfig",
+    ],
+    outs = [
+        ".config",
+        "vmlinux",
+        "Module.symvers",
+        "modules.order",
+        "exynos-base-dts/s5e9945.dtb",
+        "s5e9945-erd9945_16k.dtbo",
+    ],
+    kconfig_ext = ":Kconfig.ext",
+    build_config = ":build.config.erd9945_16k_v",
+    dtstree = "//exynos/device/erd/erd9945/arch/arm64/boot/dts:erd9945_dt",
+    # in-tree kernel modules
+    module_outs = get_common_kernel_modules_list(),
+    collect_unstripped_modules = True,
+    strip_modules = True,
+    make_goals = __make_goals,
+    defconfig_fragments = select({
+        "//exynos/soc-series/common:eng_build": [ ":arch/arm64/configs/eng.fragment"],
+        "//exynos/soc-series/common:userdebug_build": [ ":arch/arm64/configs/userdebug.fragment"],
+        "//exynos/soc-series/common:user_build": [ ":arch/arm64/configs/user.fragment"],
+    }),
+)
+
+kernel_images(
+    name = "erd9945_16k_images",
+    build_initramfs = True,
+    build_boot = True,
+    build_vendor_boot = True,
+    kernel_build = "//exynos/soc-series/common:exynos_kernel_build",
+    kernel_modules_install = "erd9945_modules_install",
+    base_kernel_images = "//common:kernel_aarch64_16k_images",
+    vendor_ramdisk_binaries = [
+        ":erd9945_custom_vendor_ramdisk",
+    ],
+    modules_list = ":vendor_boot_modules_list",
+    build_system_dlkm = True,
+    system_dlkm_modules_list = ":system_dlkm_modules_list",
+    system_dlkm_modules_blocklist = ":erd9945_system_dlkm_modules_blocklist",
+    dedup_dlkm_modules = True,
+    build_vendor_dlkm = True,
+    vendor_dlkm_archive = True,
+    vendor_dlkm_modules_list = ":vendor_dlkm_modules.erd9945",
+    vendor_dlkm_modules_blocklist = ":erd9945_vendor_dlkm_modules_blocklist",
+)
+
+__soc_16k_dtbs = [
+    "//exynos/device/erd/erd9945:erd9945_16k/s5e9945-erd9945_16k.dtbo",
+    "//exynos/device/erd/erd9945:erd9945_16k/exynos-base-dts/s5e9945.dtb",
+]
+
+dtbo_cfg(
+    name = "erd9945_16k_dtbo_cfg",
+    srcs = __soc_16k_dtbs,
+    config_file = ":16k_dtboimg.cfg",
+)
+
+copy_to_dist_dir(
+    name = "erd9945_16k_dist",
+    data = [
+        ":erd9945_16k",
+        ":erd9945_16k_dtbo_cfg",
+        ":erd9945_16k_images",
+        ":erd9945_modules_install",
+        ":erd9945_module_symbols",
+        ":erd9945_merged_uapi_headers",
+    ],
+    dist_dir = "out/erd9945/16k/dist",
+    flat = True,
+    log = "info",
+)
+
+
+register_erd9945_module()

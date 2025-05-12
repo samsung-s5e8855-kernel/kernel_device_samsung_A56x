@@ -1,0 +1,108 @@
+#if 0
+&pinctrl_0 {
+	et5917_0_irq: et5917_0_irq {
+		GPIO_CONFIG_PUD(AP,gpa0,gpa0,0, FUNC_INPUT, PULL_NONE);
+	};
+};
+#endif
+
+#if 0
+&pinctrl_0 {
+	et5917_0_hw_reset: et5917_0_hw_reset {
+		GPIO_CONFIG_PUD(AP,gpa1,gpa1,4, FUNC_OUTPUT_HIGH, PULL_NONE);
+	};
+};
+#endif
+
+&hsi2c_24 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+
+	et5917_0_pmic: et5917_pmic@61{
+		status = "okay";
+		compatible = "etek,et5917sx";
+		reg = <0x61>;
+#if 0 || 0
+		pinctrl-names = "default";
+		pinctrl-0 = <
+#if 0
+			&et5917_0_irq
+#endif
+#if 0
+			&et5917_0_hw_reset
+#endif
+		>;
+#endif
+#if 0
+		et5917,et5917_int = <SEC_GPIO_REF(AP,gpa0,gpa0,0) 0>;
+		et5917,et5917_int_level = <0>;
+		et5917,et5917_int_outmode = <1>;
+
+		interrupt-parent = <SEC_GPIO_TYPE(AP,gpa0,gpa0,0)>;
+		interrupts = <SEC_GPIO_NUM(AP,gpa0,gpa0,0) 0>;
+#endif
+#if 0
+		et5917,need_self_recovery;
+#endif
+		et5917,wakeup;
+
+		regulators {
+			et5917_0_ldo1: et5917-ldo1 {
+				regulator-name = "RCAM1_DVDD_1P1";
+				regulator-min-microvolt = <1096000>;
+				regulator-max-microvolt = <1096000>;
+				
+				 
+			};
+
+			et5917_0_ldo2: et5917-ldo2 {
+				regulator-name = "FCAM_DVDD_1P05";
+				regulator-min-microvolt = <1056000>;
+				regulator-max-microvolt = <1096000>;
+				
+				 
+			};
+
+			et5917_0_ldo3: et5917-ldo3 {
+				regulator-name = "FCAM_AVDD_2P8";
+				regulator-min-microvolt = <2796000>;
+				regulator-max-microvolt = <2796000>;
+				
+				 
+			};
+
+			et5917_0_ldo4: et5917-ldo4 {
+				regulator-name = "RCAM1_AVDD_2P8";
+				regulator-min-microvolt = <2796000>;
+				regulator-max-microvolt = <2796000>;
+				
+				 
+			};
+
+			et5917_0_ldo5: et5917-ldo5 {
+				regulator-name = "RCAM1_AFVDD_3P3";
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+				
+				 
+			};
+
+			et5917_0_ldo6: et5917-ldo6 {
+				regulator-name = "VDD_RCAM1_AVDD_1P8";
+				regulator-min-microvolt = <1796000>;
+				regulator-max-microvolt = <1796000>;
+				
+				 
+			};
+
+			et5917_0_ldo7: et5917-ldo7 {
+				regulator-name = "CAM_OIS_VDD_3P3";
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+				
+				 
+			};
+		};
+	};
+};

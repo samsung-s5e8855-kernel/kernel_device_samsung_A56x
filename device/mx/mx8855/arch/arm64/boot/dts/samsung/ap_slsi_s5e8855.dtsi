@@ -1,0 +1,3 @@
+#include <dt-bindings/clock/s5e8855.h>
+#include <dt-bindings/interrupt-controller/s5e8855.h>
+#include "../mx8855-pmic.dtsi"
